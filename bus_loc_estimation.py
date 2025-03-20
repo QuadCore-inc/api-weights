@@ -91,13 +91,23 @@ def seach_and_filter_moviments():
     for collection in collections: 
         if db[collection].count_documents({}) > 0:
             print(f"📌 Processing collection: {collection}")
+            # Users documents; if the collection is empty, documents will be
             documents = db[collection].find({})
-            if documents: 
-                users_vectors = []
+            if documents:
+                users_vectors = []  
                 for doc in documents: 
                     user_id = doc.get("_id")
+                    last_update = doc.get("last_update")
+                    if "time" in last_update:
+                            try:
+                                # Converter string de tempo para timestamp
+                                dt = datetime.strptime(last_update["time"], "%Y-%m-%d %H:%M:%S %z")
+                                last_updatetime = dt.timestamp()  # Converte para epoch time
+                                if last_updatetime >= current_window: pass
+                            except ValueError as e:
+                                print(f"⚠ Erro ao converter tempo da última atualização para user {user_id}: {e}")
+                                
                     movimentacoes = doc.get("user_movimentation", {}).values()
-                    
                     recent_movements = []
                     # Filtrar movimentações convertendo "time" corretamente
                     for mov in movimentacoes:
@@ -140,15 +150,18 @@ def seach_and_filter_moviments():
                         users_vectors.append(user_vector)
                         
                         print(f"🚌 User {user_id} has {len(recent_movements)} recent updates. Last update in {user_vector['last_update_time']}")
-                bus_lat, bus_long, bus_speed, bus_heading, bus_time = calculate_and_estimate_bus_location(users_vectors)
-                print(f"Localização estimatada do ônibus: Latitude {bus_lat} Longitude: {bus_long}")
-                create_or_update_bus(bus_collection=collection, 
+                if len(users_vectors) > 0:
+                    bus_lat, bus_long, bus_speed, bus_heading, bus_time = calculate_and_estimate_bus_location(users_vectors)
+                    print(f"Localização estimatada do ônibus: Latitude {bus_lat} Longitude: {bus_long}")
+                    create_or_update_bus(bus_collection=collection, 
                                      latitude=bus_lat,
                                      longitude=bus_long, 
                                      speed= bus_speed,
                                      heading=bus_heading,
                                      timestamp=bus_time
                                      )
+                else: 
+                    print("No recent users updates found!")
                 
 # Função para criar ou atualizar a localização do ônibus
 def create_or_update_bus(bus_collection, latitude, longitude, speed, heading, timestamp):
