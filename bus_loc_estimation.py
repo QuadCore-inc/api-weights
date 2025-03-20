@@ -228,6 +228,6 @@ def loop_query():
     """Periodic Query"""
     while True: 
         seach_and_filter_moviments()
-        time.sleep(5)
+        time.sleep(1)
 if __name__ == "__main__":
     loop_query()
